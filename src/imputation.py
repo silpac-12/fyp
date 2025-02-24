@@ -16,62 +16,59 @@ def identify_column_types(df):
 
     return df, numerical_cols, categorical_cols, datetime_cols
 
-
 def encode_categorical(df):
-    """Encodes only `object` type categorical columns while leaving missing values (NaN) unchanged."""
-
-    categorical_cols = df.select_dtypes(include=["object"]).columns.tolist()  # Only process `object` columns
+    """Encodes only `object` type categorical columns while preserving NaN values."""
+    df = df.copy()
     mappings = {}
 
+    categorical_cols = df.select_dtypes(include=["object"]).columns.tolist()
+
     for col in categorical_cols:
-        df[col] = df[col].astype("category")  # Convert to categorical
+        df[col] = df[col].astype("category")
         mapping = dict(enumerate(df[col].cat.categories))  # Create category mapping
-        df[col] = df[col].cat.codes  # Convert to numerical codes
-        df[col].replace(-1, pd.NA, inplace=True)  # Keep NaN values unchanged
-        mappings[col] = mapping  # Store mapping for decoding
+        reverse_mapping = {v: k for k, v in mapping.items()}  # Reverse for encoding
+        mappings[col] = reverse_mapping  # Save reverse mapping for decoding
+
+        df[col] = df[col].map(reverse_mapping)  # Encode categories to integers
+        df[col] = df[col].astype("Int64")  # Preserve NaN with nullable integer
 
     return df, mappings
 
-
 def decode_categorical(df, mappings):
-    """Decodes categorical columns back to their original labels, ensuring correct dtype."""
+    df = df.copy()
 
     for col, mapping in mappings.items():
-        df[col] = df[col].round().astype(int)  # Ensure valid integer labels before mapping
-        df[col] = df[col].map(mapping)  # Convert numeric codes back to original categories
-        df[col] = df[col].astype("string")  # Ensure correct dtype for Arrow serialization
+        if col in df.columns:
+            # Ensure column is integer type before decoding
+            df[col] = df[col].astype("Int64")
+            # Decode
+            df[col] = df[col].map({v: k for k, v in mapping.items()})
 
     return df
 
 
-def apply_imputation(df, method="mean", mappings=None):
-    """Encodes categorical data, imputes missing values, and correctly decodes categorical values."""
+def apply_imputation(df, method, mappings):
+    import numpy as np
+    from sklearn.impute import SimpleImputer, IterativeImputer
 
-    # Encode categorical columns before imputation
-    df_encoded, mappings = encode_categorical(df)
+    df = df.copy().replace({pd.NA: np.nan})  # Replace pd.NA with np.nan
 
-    # Convert all missing values (`pd.NA`) to `np.nan`
-    df_encoded = df_encoded.replace({pd.NA: np.nan})
-
-    # Select imputation method (applies to both numerical and encoded categorical data)
+    # Select imputation method
     if method == "mean":
         imputer = SimpleImputer(strategy="mean")
     elif method == "zero":
         imputer = SimpleImputer(strategy="constant", fill_value=0)
     elif method == "mice":
-        imputer = IterativeImputer(max_iter=50, random_state=42)  # MICE Imputation
+        imputer = IterativeImputer(max_iter=10, random_state=42)
     else:
-        raise ValueError("Unsupported imputation method. Choose 'mean', 'zero', or 'mice'.")
+        raise ValueError("Unsupported imputation method.")
 
-    # Apply imputation to all columns
-    df_encoded[df_encoded.columns] = imputer.fit_transform(df_encoded)
+    # Impute data
+    df[df.columns] = imputer.fit_transform(df)
 
-    # Ensure categorical values are rounded before decoding
-    categorical_cols = mappings.keys()
-    for col in categorical_cols:
-        df_encoded[col] = np.round(df_encoded[col]).astype("Int64")  # Ensure valid category labels
+    # ✅ Round and convert only categorical columns to Int64
+    for col in mappings:
+        if col in df.columns:
+            df[col] = df[col].round().astype("Int64")
 
-    # Decode categorical columns back to original values
-    df_final = decode_categorical(df_encoded, mappings)
-
-    return df_final
+    return df
