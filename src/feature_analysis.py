@@ -1,11 +1,11 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
+import streamlit as st
 
 def show_summary(df):
     """Returns summary statistics of the dataset"""
     return df.describe()
-
 
 def plot_histograms(df: pd.DataFrame, show_plot: bool = True):
     """
@@ -33,10 +33,6 @@ def plot_histograms(df: pd.DataFrame, show_plot: bool = True):
         ax.set_ylabel("Frequency")
 
         figures.append(fig)
-
-        if show_plot:
-            plt.show()  # Display plot immediately if requested
-
     return figures
 
 def compare_feature_means(df_before, df_after):
@@ -49,7 +45,6 @@ def compare_feature_means(df_before, df_after):
         'Difference': means_after - means_before
     })
 
-
 def compare_feature_stds(df_before, df_after):
     """Returns a DataFrame comparing feature standard deviations before and after imputation."""
     std_before = df_before.std(numeric_only=True)
@@ -60,7 +55,6 @@ def compare_feature_stds(df_before, df_after):
         'Difference': std_after - std_before
     })
 
-
 def compare_missing_values(df_before, df_after):
     """Returns a DataFrame comparing missing value counts before and after imputation."""
     missing_before = df_before.isnull().sum()
@@ -70,7 +64,6 @@ def compare_missing_values(df_before, df_after):
         'After Imputation': missing_after,
         'Difference': missing_after - missing_before
     })
-
 
 def compare_correlation_matrices(df_before, df_after):
     """Returns a matplotlib figure comparing correlation matrices before and after imputation."""
@@ -119,8 +112,5 @@ def plot_correlation_heatmap(df: pd.DataFrame, show_plot: bool = True, debug: bo
     fig, ax = plt.subplots(figsize=(10, 6))
     sns.heatmap(numeric_df.corr(), annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5, ax=ax)
     ax.set_title("Feature Correlation Heatmap")
-
-    if show_plot:
-        plt.show()
 
     return fig

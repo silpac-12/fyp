@@ -40,7 +40,7 @@ def decode_categorical(df, mappings):
     for col, mapping in mappings.items():
         if col in df.columns:
             # Ensure column is integer type before decoding
-            df[col] = df[col].astype("Int64")
+            #df[col] = df[col].astype("Int64")
             # Decode
             df[col] = df[col].map({v: k for k, v in mapping.items()})
 
