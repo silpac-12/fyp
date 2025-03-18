@@ -66,28 +66,37 @@ def check_smote_applicability(dataset, target_column=None, threshold=0.2):
 
 
 def evaluate_sampling_methods(X, y, method):
-    y = y.astype(int)  # Ensure target variable is integer (0/1)
+    """
+    Evaluates SMOTE and undersampling methods using an appropriate classifier
+    based on the number of unique target classes.
+    """
+    y = y.astype(int)  # Ensure target variable is integer
     X = X.astype(np.float64)
 
-    # ✅ Print unique values in target variable (to check class balance)
-    print("Unique values in target variable (y):", np.unique(y, return_counts=True))
+    unique_classes = np.unique(y)
+    num_classes = len(unique_classes)
 
-    # Split into train/test sets (80% train, 20% test)
+    # Choose classifier based on binary or multi-class problem
+    if num_classes == 2:
+        clf = LogisticRegression(max_iter=1000, C=0.1)
+        average_type = "binary"
+    else:
+        clf = RandomForestClassifier(n_estimators=100, random_state=42)
+        average_type = "macro"  # Handle multi-class evaluation
+
+    # ✅ Train/test split (80% train, 20% test)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-    # Initialize Logistic Regression Model with regularization
-    clf = LogisticRegression(max_iter=1000, C=0.1)  # C=0.1 for regularization
-
-    # ✅ Train model on original dataset and evaluate on test set
+    # ✅ Train and evaluate on original dataset
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
 
     base_metrics = {
-        "F1 Score": f1_score(y_test, y_pred),
-        "Precision": precision_score(y_test, y_pred),
-        "Recall": recall_score(y_test, y_pred),
+        "F1 Score": f1_score(y_test, y_pred, average=average_type),
+        "Precision": precision_score(y_test, y_pred, average=average_type),
+        "Recall": recall_score(y_test, y_pred, average=average_type),
         "Accuracy": accuracy_score(y_test, y_pred),
-        "AUC-ROC": roc_auc_score(y_test, y_pred),
+        "AUC-ROC": roc_auc_score(y_test, clf.predict_proba(X_test), multi_class="ovr") if num_classes > 2 else roc_auc_score(y_test, y_pred),
     }
 
     # ✅ Apply SMOTE (Oversampling)
@@ -95,14 +104,14 @@ def evaluate_sampling_methods(X, y, method):
     X_sm, y_sm = smote.fit_resample(X_train, y_train)
 
     clf.fit(X_sm, y_sm)
-    y_pred_sm = clf.predict(X_test)  # Evaluate on the same test set
+    y_pred_sm = clf.predict(X_test)
 
     smote_metrics = {
-        "F1 Score": f1_score(y_test, y_pred_sm),
-        "Precision": precision_score(y_test, y_pred_sm),
-        "Recall": recall_score(y_test, y_pred_sm),
+        "F1 Score": f1_score(y_test, y_pred_sm, average=average_type),
+        "Precision": precision_score(y_test, y_pred_sm, average=average_type),
+        "Recall": recall_score(y_test, y_pred_sm, average=average_type),
         "Accuracy": accuracy_score(y_test, y_pred_sm),
-        "AUC-ROC": roc_auc_score(y_test, y_pred_sm),
+        "AUC-ROC": roc_auc_score(y_test, clf.predict_proba(X_test), multi_class="ovr") if num_classes > 2 else roc_auc_score(y_test, y_pred_sm),
     }
 
     # ✅ Apply Random Undersampling
@@ -110,33 +119,28 @@ def evaluate_sampling_methods(X, y, method):
     X_under, y_under = under.fit_resample(X_train, y_train)
 
     clf.fit(X_under, y_under)
-    y_pred_under = clf.predict(X_test)  # Evaluate on the same test set
+    y_pred_under = clf.predict(X_test)
 
     under_metrics = {
-        "F1 Score": f1_score(y_test, y_pred_under),
-        "Precision": precision_score(y_test, y_pred_under),
-        "Recall": recall_score(y_test, y_pred_under),
+        "F1 Score": f1_score(y_test, y_pred_under, average=average_type),
+        "Precision": precision_score(y_test, y_pred_under, average=average_type),
+        "Recall": recall_score(y_test, y_pred_under, average=average_type),
         "Accuracy": accuracy_score(y_test, y_pred_under),
-        "AUC-ROC": roc_auc_score(y_test, y_pred_under),
+        "AUC-ROC": roc_auc_score(y_test, clf.predict_proba(X_test), multi_class="ovr") if num_classes > 2 else roc_auc_score(y_test, y_pred_under),
     }
 
-    print("Class Distribution After SMOTE:", np.bincount(y_sm))
-    print("Class Distribution After Undersampling:", np.bincount(y_under))
-
-    # ✅ Generate Recommendations Based on Results
+    # ✅ Recommendations
     advice = []
 
     if smote_metrics["F1 Score"] > base_metrics["F1 Score"]:
-        advice.append("✅ **SMOTE improved F1-score**, indicating that oversampling helped balance the model.")
+        advice.append("✅ **SMOTE improved F1-score**, indicating oversampling helped balance the model.")
     else:
         advice.append("⚠️ **SMOTE did not improve performance** significantly. Consider tuning the SMOTE parameters.")
 
     if under_metrics["F1 Score"] > base_metrics["F1 Score"]:
-        advice.append(
-            "✅ **Undersampling improved F1-score**, meaning that removing majority class examples helped reduce bias.")
+        advice.append("✅ **Undersampling improved F1-score**, meaning reducing majority class examples helped reduce bias.")
     else:
-        advice.append(
-            "⚠️ **Undersampling did not improve performance**. Consider using a combination of SMOTE and undersampling.")
+        advice.append("⚠️ **Undersampling did not improve performance**. Consider using a combination of SMOTE and undersampling.")
 
     if smote_metrics["Recall"] > base_metrics["Recall"]:
         advice.append("🚀 **SMOTE increased recall**, which is useful if you want to detect more positive cases.")
