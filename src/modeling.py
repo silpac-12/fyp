@@ -22,10 +22,10 @@ def select_best_model(X, y):
     models = {
         "Logistic Regression": LogisticRegression(max_iter=1000),
         "Random Forest": RandomForestClassifier(
-            n_estimators=50, max_depth=3, min_samples_split=10, min_samples_leaf=5, random_state=42
+            n_estimators=30, max_depth=5, min_samples_split=10, min_samples_leaf=5, random_state=42
         ),
         "XGBoost": XGBClassifier(
-            n_estimators=50,
+            n_estimators=30,
             max_depth=4,
             learning_rate=0.05,
             colsample_bytree=0.8,

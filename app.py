@@ -34,6 +34,14 @@ if "sampling_scores" not in st.session_state:
     st.session_state.sampling_scores = None
 if "learning_curve_plot" not in st.session_state:
     st.session_state.learning_curve_plot = None
+if "stepImputation" not in st.session_state:
+    st.session_state.stepImputation = False
+if "stepModels" not in st.session_state:
+    st.session_state.stepModels = False
+if "stepSampling" not in st.session_state:
+    st.session_state.stepSampling = False
+if "stepApplySample" not in st.session_state:
+    st.session_state.stepApplySample = False
 
 # ✅ File uploader - Ensure df is not reset
 uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
@@ -50,6 +58,7 @@ if st.session_state.df is not None:
     # Column selection and removal
     st.subheader("🔻 Remove Columns (e.g., IDs, Dates)")
     cols_to_drop = st.multiselect("Select columns to remove", df.columns)
+    st.session_state.cols_to_drop = cols_to_drop
 
     if st.button("Remove Selected Columns"):
         st.session_state.dropped_columns_df = df[cols_to_drop].copy()
@@ -58,6 +67,7 @@ if st.session_state.df is not None:
         st.success(f"✅ Removed columns: {cols_to_drop}")
         st.write("❌ **Dataset after column removal:**")
         st.write(df.head())
+
 
     # Feature Analysis
     #st.pyplot(plot_histograms(df))
@@ -89,25 +99,36 @@ if st.session_state.df is not None:
         st.success("✅ **Final Dataset Ready!**")
         df_final = df_final.drop(columns=cols_to_drop)
         st.session_state.df_final = df_final
-        st.write(df_final.head())
+        st.session_state.stepImputation = True
+        st.rerun()
 
-        # Download option
-        csv = df_final.to_csv(index=False).encode("utf-8")
-        st.download_button("⬇️ Download Processed Dataset", csv, "imputed_data.csv", "text/csv")
 
-        # Feature Comparisons
-        df_before = df_encoded.drop(columns=cols_to_drop)
-        df_after = df_imputed.drop(columns=cols_to_drop)
-        st.subheader("Feature Means Comparison")
-        st.dataframe(compare_feature_means(df_before, df_after))
-        st.subheader("Feature Standard Deviations Comparison")
-        st.dataframe(compare_feature_stds(df_before, df_after))
-        st.subheader("Missing Values Comparison")
-        st.dataframe(compare_missing_values(df_before, df_after))
-        st.subheader("Correlation Matrices Comparison")
-        figCorrMat = compare_correlation_matrices(df_before, df_after)
-        st.session_state.figCorrMat = figCorrMat
-        st.pyplot(st.session_state.figCorrMat)
+if st.session_state.stepImputation:
+
+    st.write(st.session_state.df_final.head())
+
+    # Download option
+    csv = st.session_state.df_final.to_csv(index=False).encode("utf-8")
+    st.download_button("⬇️ Download Processed Dataset", csv, "imputed_data.csv", "text/csv")
+
+    # Feature Comparisons
+    df_before = st.session_state.df_encoded.drop(columns=st.session_state.cols_to_drop)
+    df_after = st.session_state.df_imputed.drop(columns=st.session_state.cols_to_drop)
+    st.subheader("Feature Means Comparison")
+    st.dataframe(compare_feature_means(df_before, df_after))
+    st.subheader("Feature Standard Deviations Comparison")
+    st.dataframe(compare_feature_stds(df_before, df_after))
+    st.subheader("Missing Values Comparison")
+    st.dataframe(compare_missing_values(df_before, df_after))
+    st.subheader("Correlation Matrices Comparison")
+    figCorrMat = compare_correlation_matrices(df_before, df_after)
+    st.session_state.figCorrMat = figCorrMat
+    st.pyplot(st.session_state.figCorrMat)
+
+
+
+# ✅ Ensure `df_final` is available before proceeding
+if st.session_state.df_final is not None:
 
     # Dropdown to select the target variable
     target_column = st.selectbox("Select Target Variable:", st.session_state.df_final.columns)
@@ -116,9 +137,6 @@ if st.session_state.df is not None:
     st.write(f"### Selected Target Variable: `{target_column}`")
     st.write("Unique Values in Target Column:", st.session_state.df_final[target_column].unique())
 
-
-# ✅ Ensure `df_final` is available before proceeding
-if st.session_state.df_final is not None:
     st.header("Class Balancing")
 
     # Call SMOTE analysis function
@@ -129,32 +147,37 @@ if st.session_state.df_final is not None:
         st.json(result)
         st.success(result["recommendation"])
 
-        # ✅ Ensure sampling scores persist
-        if st.button("Evaluate Sampling"):
-            from src.SMOTE_checker import evaluate_sampling_methods
-            st.session_state.df_final = st.session_state.df_imputed
-            X = st.session_state.df_final.drop(columns=[st.session_state.target_column])
-            y = st.session_state.df_final[st.session_state.target_column]
+    st.session_state.stepSampling = True
 
-            # Convert `X` to purely numeric
-            X = X.apply(pd.to_numeric, errors="coerce")
-            X = X.select_dtypes(include=[np.number])  # Remove non-numeric data
+if st.session_state.stepSampling:
 
-            # Convert `y` to integer
-            y = y.astype(int)
-            st.session_state.sampling_scores, trained_clf = evaluate_sampling_methods(X, y,                                                                         st.session_state.sampling_method)
-            st.session_state.clf = trained_clf
+    # ✅ Ensure sampling scores persist
+    if st.button("Evaluate Sampling"):
+        from src.SMOTE_checker import evaluate_sampling_methods
+        st.session_state.df_final = st.session_state.df_imputed
+        X = st.session_state.df_final.drop(columns=[st.session_state.target_column])
+        y = st.session_state.df_final[st.session_state.target_column]
+
+        # Convert `X` to purely numeric
+        X = X.apply(pd.to_numeric, errors="coerce")
+        X = X.select_dtypes(include=[np.number])  # Remove non-numeric data
+
+        # Convert `y` to integer
+        y = y.astype(int)
+        st.session_state.sampling_scores, trained_clf = evaluate_sampling_methods(X, y,                                                                         st.session_state.sampling_method)
+        st.session_state.clf = trained_clf
 
 
-    # ✅ Fix for Sampling Selection Reset
+
+    # Fix for Sampling Selection Reset
     st.subheader("📊 Sampling Strategy Evaluation")
 
-
-    # ✅ Display stored scores even after script reruns
+    # Display stored scores even after script reruns
     if st.session_state.sampling_scores:
         st.json(st.session_state.sampling_scores)
+        st.session_state.stepApplySample = True
 
-    # ✅ Ensure learning curve persists
+    # Ensure learning curve persists
     st.subheader("📈 Learning Curve")
     if st.button("Plot Learning Curve"):
         from src.SMOTE_checker import plot_learning_curve
@@ -165,6 +188,10 @@ if st.session_state.df_final is not None:
     # ✅ Show the learning curve if available
     if st.session_state.learning_curve_plot:
         st.pyplot(st.session_state.learning_curve_plot)
+
+
+
+if st.session_state.stepApplySample:
 
     selected_method = st.selectbox(
             "Choose a Sampling Method",
@@ -190,10 +217,11 @@ if st.session_state.df_final is not None:
     elif selected_method == "Undersampling":
         sampled_df = apply_undersampling(X, y)
 
-    # ✅ Store the selected dataset in session state
+    # Store the selected dataset in session state
     st.session_state.sampled_df = sampled_df
+
     sampled_decoded_df = decode_categorical(sampled_df, st.session_state.mappings)
-    # ✅ Display Selected Dataset
+    #Display Selected Dataset
     st.write(f"✅ **Dataset Preview - {selected_method}**")
     st.dataframe(sampled_decoded_df)
     fig1, result1 = check_smote_applicability(sampled_df, st.session_state.target_column)
@@ -211,19 +239,23 @@ if st.session_state.df_final is not None:
     if selected_method != st.session_state.sampling_method:
         st.session_state.sampling_method = selected_method
         #st.rerun()
+    if st.button("Apply Models"):
+        st.session_state.stepModels = True
 
-    if sampled_df is not None:
-        X = sampled_df.drop(columns=[st.session_state.target_column])
-        y = sampled_df[st.session_state.target_column]
-        st.write("X: ", X)
-        st.write("Y: ", y)
-        selected_model, model_scores, reasoning = select_best_model(X, y)
-        st.write("Selected Model: ", selected_model)
-        st.write("Model Scores: ", model_scores)
-        st.write("Reasoning: ", reasoning)
 
-        reasoning = generate_model_reasoning(selected_model, model_scores, len(np.unique(y)))
-        st.write("Reasoning: ", reasoning)
+if st.session_state.stepModels:
 
-        figModel = plot_model_learning_curve(selected_model, X, y, title=f"Learning Curve for {selected_model.__class__.__name__}")
-        st.pyplot(figModel)
+    X = st.session_state.sampled_df.drop(columns=[st.session_state.target_column])
+    y = st.session_state.sampled_df[st.session_state.target_column]
+    st.write("X: ", X)
+    st.write("Y: ", y)
+    selected_model, model_scores, reasoning = select_best_model(X, y)
+    st.write("Selected Model: ", selected_model)
+    st.write("Model Scores: ", model_scores)
+    st.write("Reasoning: ", reasoning)
+
+    reasoning = generate_model_reasoning(selected_model, model_scores, len(np.unique(y)))
+    st.write("Reasoning: ", reasoning)
+
+    figModel = plot_model_learning_curve(selected_model, X, y, title=f"Learning Curve for {selected_model.__class__.__name__}")
+    st.pyplot(figModel)
