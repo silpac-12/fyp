@@ -9,13 +9,15 @@ from imblearn.under_sampling import RandomUnderSampler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score, learning_curve
 from streamlit import session_state
+from pycaret.classification import setup, compare_models, tune_model, interpret_model
 
 from src.SMOTE_checker import check_smote_applicability, evaluate_sampling_methods, apply_smote, apply_undersampling
 from src.data_loader import load_dataset, check_missing_values
 from src.feature_analysis import plot_histograms, show_summary, compare_feature_means, \
     compare_missing_values, compare_correlation_matrices, compare_feature_stds, plot_correlation_heatmap
 from src.imputation import encode_categorical, decode_categorical, apply_imputation
-from src.modeling import select_best_model, generate_model_reasoning, plot_model_learning_curve
+from src.modeling import select_best_model, plot_model_learning_curve, \
+    check_feature_correlation
 
 st.title("Cancer Prediction - Data Processing & Imputation")
 
@@ -244,18 +246,68 @@ if st.session_state.stepApplySample:
 
 
 if st.session_state.stepModels:
-
+    # Extract features (X) and target variable (y)
     X = st.session_state.sampled_df.drop(columns=[st.session_state.target_column])
     y = st.session_state.sampled_df[st.session_state.target_column]
+
     st.write("X: ", X)
     st.write("Y: ", y)
-    selected_model, model_scores, reasoning = select_best_model(X, y)
-    st.write("Selected Model: ", selected_model)
-    st.write("Model Scores: ", model_scores)
-    st.write("Reasoning: ", reasoning)
 
-    reasoning = generate_model_reasoning(selected_model, model_scores, len(np.unique(y)))
-    st.write("Reasoning: ", reasoning)
+    # Debug: Print correlation before removing anything
+    correlated_features = check_feature_correlation(X, threshold=0.95)
+    print(correlated_features)
 
-    figModel = plot_model_learning_curve(selected_model, X, y, title=f"Learning Curve for {selected_model.__class__.__name__}")
+    # ✅ Run PyCaret’s AutoML to select the best model automatically
+    selected_model, model_scores, test_acc = select_best_model(X, y)
+
+    st.write("✅ **Selected Model:**", selected_model.__class__.__name__)
+
+    # 🔹 Feature Importance Analysis
+    st.subheader("🔎 Feature Importance Analysis")
+    # Check if the selected model is tree-based before interpreting
+    tree_based_models = ["xgboost", "rf", "et", "dt", "lightgbm"]
+
+    if selected_model.__class__.__name__.lower() in tree_based_models:
+        interpret_model(selected_model)
+    else:
+        st.warning(
+            "Feature importance is only available for tree-based models (XGBoost, Random Forest, Extra Trees, Decision Tree, LightGBM). Skipping interpretation.")
+    #interpret_model(selected_model)  # Displays feature importance using PyCaret
+
+    # 🚀 Evaluate the model using cross-validation
+    st.subheader("📊 Model Performance")
+    st.write(f"✅ Model Scores: {selected_model.get_params()}")  # Display model parameters
+
+    # 🔍 Learning Curve to detect Overfitting
+    st.subheader("📈 Learning Curve Analysis")
+    figModel = plot_model_learning_curve(selected_model, X, y,
+                                         title=f"Learning Curve for {selected_model.__class__.__name__}")
     st.pyplot(figModel)
+
+    st.write(f"✅ Selected Model: {selected_model}")  # Display the model name
+    st.write(f"📊 Model Performance: {model_scores}")  # Show model comparison table
+    st.write(f"📈 Test Accuracy: {test_acc:.3f}")  # Display test accuracy
+
+    # Run a simple cross-validation test
+    cv_scores = cross_val_score(selected_model, X, y, cv=5, scoring='accuracy')
+    print(f"Cross-Validation Scores: {cv_scores}")
+    print(f"Mean Accuracy: {np.mean(cv_scores):.4f}")
+
+    # If the selected model supports feature importance, display it
+    if hasattr(selected_model, "feature_importances_"):
+        st.subheader("🔎 Feature Importance Analysis")
+        feature_importances = pd.Series(selected_model.feature_importances_, index=X.columns).sort_values(
+            ascending=False)
+        st.bar_chart(feature_importances)
+
+    # ✅ Save the trained model (Optional: if you want to use it later)
+    from pycaret.classification import save_model
+
+    save_model(selected_model, "best_model")
+    st.success("✅ Model saved as `best_model.pkl`")
+
+    for col in X.columns:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.boxplot(x=y, y=X[col], ax=ax)
+        ax.set_title(f"Feature: {col} vs Target")
+        st.pyplot(fig)
