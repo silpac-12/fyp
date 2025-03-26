@@ -20,8 +20,8 @@ from src.feature_analysis import plot_histograms, show_summary, compare_feature_
     detect_data_leakage, detect_statistical_shifts, detect_target_correlation_shifts, detect_outlier_changes
 from src.imputation import encode_categorical, decode_categorical, apply_imputation
 from src.modeling import select_best_model, plot_model_learning_curve, \
-    check_feature_correlation
-from src.utils import extract_inner_model
+    check_feature_correlation, evaluate_model_performance
+from src.utils import extract_inner_model, plot_shap_summary
 
 st.title("Cancer Prediction - Data Processing & Imputation")
 
@@ -283,7 +283,7 @@ if st.session_state.stepModels:
 
     # ✅ Run PyCaret’s AutoML to select the best model automatically
     selected_model, model_scores, test_acc = select_best_model(X, y)
-
+    st.session_state.selected_model = selected_model
     st.write("✅ **Selected Model:**", selected_model.__class__.__name__)
 
     # 🔹 Feature Importance Analysis
@@ -330,46 +330,96 @@ if st.session_state.stepModels:
     #save_model(selected_model, "best_model")
     #st.success("✅ Model saved as `best_model.pkl`")
 
-    st.subheader("🧠 SHAP Model Explainability")
-
-    # Extract the inner model from PyCaret pipeline
-    raw_model = extract_inner_model(selected_model)
-
-    # Preprocessed features
-    X_shap = X.copy()
-
-    # Auto-detect SHAP explainer type
+    # Step 1: Explainer
     try:
-        explainer = shap.Explainer(raw_model, X_shap)
-    except Exception as e:
-        st.warning("Defaulting to KernelExplainer due to model incompatibility.")
-        explainer = shap.KernelExplainer(raw_model.predict_proba, shap.sample(X_shap, 100))
+        explainer = shap.Explainer(selected_model, X)
+    except Exception:
+        explainer = shap.KernelExplainer(selected_model.predict_proba, shap.sample(X, 100))
 
-    # Compute SHAP values
-    shap_values = explainer(X_shap)
+    # Step 2: Get shap_values
+    shap_values = explainer(X)
 
-    # Detect if it's multiclass (list of arrays or 3D)
-    is_multiclass = hasattr(shap_values, 'values') and isinstance(shap_values.values, list)
+    # Step 3: Normalize shapes
+    # values = shap_values.values if hasattr(shap_values, "values") else shap_values
+    # data = shap_values.data
+    # feature_names = shap_values.feature_names
 
-    # Summary plot
     st.subheader("📊 SHAP Summary Plot")
 
-    # SHAP: Handle multiclass
-    if len(shap_values.values.shape) == 3:
-        st.info("Detected multiclass or 2-class SHAP output. Showing Class 1 SHAP values.")
-        class_index = 1
-        shap_vals_for_class = shap_values[..., class_index]
+    # Extract SHAP core components
+    values = shap_values.values
+    data = shap_values.data
+    feature_names = shap_values.feature_names
+    base_values = shap_values.base_values
 
+    shape = values.shape
+    num_dims = len(shape)
+
+    if num_dims == 3:
+        n_samples, n_features, n_classes = shape
+
+        st.text(f"SHAP values shape: {shape}")
+        st.text(f"Data shape: {data.shape}")
+
+        # 🧠 Axis 2 is class count → this is your standard format
+        class_index = 1 if n_classes == 2 else st.selectbox("Select class to visualize", range(n_classes))
+
+        # Slice along the correct axis: (n_samples, n_features)
+        vals = values[:, :, class_index]
+
+        # Fix mismatch if needed
+        if vals.shape[1] != data.shape[1]:
+            vals = vals[:, :-1]
+
+        expl = shap.Explanation(
+            values=vals,
+            base_values=base_values[:, class_index] if base_values.ndim == 2 else base_values,
+            data=data,
+            feature_names=feature_names
+        )
+
+        st.info(f"SHAP Summary for class {class_index}")
         fig, ax = plt.subplots()
-        shap.plots.beeswarm(shap_vals_for_class, show=False)
+        shap.plots.beeswarm(expl, show=False)
         st.pyplot(fig)
         plt.clf()
+
+    elif num_dims == 2:
+        # Binary, standard
+        if values.shape[1] != data.shape[1]:
+            values = values[:, :-1]
+
+        expl = shap.Explanation(
+            values=values,
+            base_values=base_values,
+            data=data,
+            feature_names=feature_names
+        )
+
+        st.info("SHAP Summary for binary classification")
+        fig, ax = plt.subplots()
+        shap.plots.beeswarm(expl, show=False)
+        st.pyplot(fig)
+        plt.clf()
+
     else:
-        fig, ax = plt.subplots()
-        shap.plots.beeswarm(shap_values, show=False)
-        st.pyplot(fig)
-        plt.clf()
+        st.error(f"❌ Unexpected SHAP value shape: {shape}")
+
+
 
     correlations = st.session_state.sampled_df.corr()[st.session_state.target_column].drop(st.session_state.target_column).sort_values(key=abs, ascending=False)
     st.write("📊 Feature-Target Correlations")
     st.dataframe(correlations)
+
+    precision, recall, cm_fig, roc_fig = evaluate_model_performance(st.session_state.selected_model, X, y)
+
+    st.subheader("📌 Classification Evaluation")
+    st.markdown(f"**🎯 Precision:** `{precision:.3f}`")
+    st.markdown(f"**🎯 Recall:** `{recall:.3f}`")
+
+    st.plotly_chart(cm_fig)
+
+    if roc_fig:
+        st.pyplot(roc_fig)
+    else:
+        st.info("ROC Curve is only available for binary classification.")
