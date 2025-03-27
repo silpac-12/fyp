@@ -2,54 +2,36 @@ import numpy as np
 import shap
 import streamlit as st
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
-from imblearn.combine import SMOTETomek
-from imblearn.over_sampling import SMOTE
-from imblearn.under_sampling import RandomUnderSampler
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import cross_val_score, learning_curve
-from sklearn.pipeline import Pipeline
-from streamlit import session_state
-from pycaret.classification import setup, compare_models, tune_model, interpret_model
+from sklearn.model_selection import cross_val_score
+from pycaret.classification import interpret_model
 
-from src.SMOTE_checker import check_smote_applicability, evaluate_sampling_methods, apply_smote, apply_undersampling
+from src.SMOTE_checker import check_smote_applicability, apply_smote, apply_undersampling
 from src.data_loader import load_dataset, check_missing_values
-from src.feature_analysis import plot_histograms, show_summary, compare_feature_means, \
+from src.feature_analysis import show_summary, compare_feature_means, \
     compare_missing_values, compare_correlation_matrices, compare_feature_stds, plot_correlation_heatmap, \
-    detect_data_leakage, detect_statistical_shifts, detect_target_correlation_shifts, detect_outlier_changes
+    detect_data_leakage, detect_statistical_shifts, detect_outlier_changes
 from src.imputation import encode_categorical, decode_categorical, apply_imputation
 from src.modeling import select_best_model, plot_model_learning_curve, \
     check_feature_correlation, evaluate_model_performance
-from src.utils import extract_inner_model, plot_shap_summary
+from src.utils.utils import initialize_session_state
 
 st.title("Cancer Prediction - Data Processing & Imputation")
 
-# ✅ Ensure session state variables are initialized
-if "df" not in st.session_state:
-    st.session_state.df = None
-if "dropped_columns_df" not in st.session_state:
-    st.session_state.dropped_columns_df = None
-if "mappings" not in st.session_state:
-    st.session_state.mappings = None
-if "df_final" not in st.session_state:
-    st.session_state.df_final = None
-if "sampling_method" not in st.session_state:
-    st.session_state.sampling_method = "No Sampling"
-if "sampling_scores" not in st.session_state:
-    st.session_state.sampling_scores = None
-if "learning_curve_plot" not in st.session_state:
-    st.session_state.learning_curve_plot = None
-if "stepImputation" not in st.session_state:
-    st.session_state.stepImputation = False
-if "stepModels" not in st.session_state:
-    st.session_state.stepModels = False
-if "stepSampling" not in st.session_state:
-    st.session_state.stepSampling = False
-if "stepApplySample" not in st.session_state:
-    st.session_state.stepApplySample = False
-if "stepTarget" not in st.session_state:
-    st.session_state.stepTarget = False
+initialize_session_state({
+    "df": None,
+    "dropped_columns_df": None,
+    "mappings": None,
+    "df_final": None,
+    "sampling_method": "No Sampling",
+    "sampling_scores": None,
+    "learning_curve_plot": None,
+    "stepImputation": False,
+    "stepModels": False,
+    "stepSampling": False,
+    "stepApplySample": False,
+    "stepTarget": False,
+})
 
 # ✅ File uploader - Ensure df is not reset
 uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
@@ -325,7 +307,6 @@ if st.session_state.stepModels:
         st.bar_chart(feature_importances)
 
     # ✅ Save the trained model (Optional: if you want to use it later)
-    from pycaret.classification import save_model
 
     #save_model(selected_model, "best_model")
     #st.success("✅ Model saved as `best_model.pkl`")
