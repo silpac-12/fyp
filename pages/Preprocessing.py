@@ -13,7 +13,9 @@ from src.utils.generate_prompt import imputation_prompt
 st.subheader("🩺 Impute Missing Values")
 imputation_method = st.selectbox("Choose an imputation method", ["mean", "zero", "mice"])
 
+
 if st.button("Apply Imputation"):
+    st.session_state.imputation_method = imputation_method
     df_imputed = apply_imputation(st.session_state.df_encoded, imputation_method, st.session_state.mappings)
     st.session_state.df_imputed = df_imputed
     df_final = decode_categorical(df_imputed, st.session_state.mappings)
@@ -61,7 +63,7 @@ if st.session_state.stepImputation:
     st.dataframe(outlier_changes)
 
     prompt = imputation_prompt(
-        imputation_method,
+        st.session_state.imputation_method,
         df_before,
         df_after,
         st.session_state.cols_to_drop,

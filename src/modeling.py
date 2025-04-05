@@ -73,7 +73,8 @@ def select_best_model(X, y, optimize_metric='Accuracy', n_iter=50):
         session_id=42,
         html=False,
         verbose=False,
-        use_gpu=True if hasattr(X, 'cuda') else False
+        use_gpu=True if hasattr(X, 'cuda') else False,
+        n_jobs=1
     )
 
     # Compare models

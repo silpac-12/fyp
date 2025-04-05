@@ -1,4 +1,5 @@
 # generate_prompt.py
+import numpy as np
 import pandas as pd
 
 
@@ -102,8 +103,15 @@ def modeling_prompt(
     n_classes: int
 ) -> str:
     # Format top SHAP features
-    shap_features = sorted(shap_summary.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
-    shap_summary_text = "\n".join([f"- {feat}: SHAP impact score = {score:.4f}" for feat, score in shap_features])
+    shap_features = sorted(
+        shap_summary.items(),
+        key=lambda x: float(np.abs(x[1]).mean()) if hasattr(x[1], "__len__") else float(abs(x[1])),
+        reverse=True
+    )[:5]
+    shap_summary_text = "\n".join([
+        f"- {feat}: SHAP impact score = {float(np.mean(score)):.4f}"
+        for feat, score in shap_features
+    ])
 
     # Format top target correlations
     top_corrs_text = "\n".join([f"- {feat}: correlation with target = {score:.4f}" for feat, score in list(top_feature_corrs.items())[:5]])
