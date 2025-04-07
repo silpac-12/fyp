@@ -7,8 +7,6 @@ from src.feature_analysis import plot_correlation_heatmap, compare_feature_means
 from src.utils.chatgpt_utils import get_chatgpt_feedback
 from src.utils.generate_prompt import imputation_prompt
 
-#st.write(st.session_state.df_final.head())
-
 # Imputation Step
 st.subheader("🩺 Impute Missing Values")
 imputation_method = st.selectbox("Choose an imputation method", ["mean", "zero", "mice"])
@@ -54,10 +52,6 @@ if st.session_state.stepImputation:
     stat_shifts = detect_statistical_shifts(df_before, df_after)
     #target_corr_shifts = detect_target_correlation_shifts(df_before, df_after, y)
     outlier_changes = detect_outlier_changes(df_before, df_after)
-
-    # Display results in Streamlit
-    st.write("📊 **Statistical Changes in Features After Imputation**")
-    st.dataframe(stat_shifts)
 
     st.write("⚠️ **Outlier Changes After Imputation**")
     st.dataframe(outlier_changes)
