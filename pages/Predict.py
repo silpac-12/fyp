@@ -37,9 +37,6 @@ with st.form("patient_form"):
 
 
 if submitted:
-    st.write("🧭 Category Mapping for histopath_type:", st.session_state.mappings.get("histopath_type", {}))
-    st.write("📤 Selected Value:", user_input.get("histopath_type"))
-
     input_df = pd.DataFrame([user_input])
     input_df = decode_categorical(input_df, st.session_state.mappings)
 
@@ -50,18 +47,37 @@ if submitted:
     pred_class = model.predict(input_df)[0]
     prob = model.predict_proba(input_df)[0]
 
-    # Label map for known classes
-    label_map = {0: "No Cancer", 1: "Cancer"}
+    if st.session_state.target_column == "case_csPCa":
+        # Label map for known classes
+        label_map = {0: "No Cancer", 1: "Cancer"}
 
-    # Safely convert prediction label
-    pred_readable = label_map.get(pred_class, str(pred_class))
-    st.success(f"🔍 Prediction: **{pred_readable}**")
+        # Safely convert prediction label
+        pred_readable = label_map.get(pred_class, str(pred_class))
+        st.success(f"🔍 Prediction: **{pred_readable}**")
 
-    # Format probabilities
-    readable_probs = {
-        label_map.get(cls, str(cls)): round(p, 4)
-        for cls, p in zip(model.classes_, prob)
-    }
+        # Format probabilities
+        readable_probs = {
+            label_map.get(cls, str(cls)): round(p, 4)
+            for cls, p in zip(model.classes_, prob)
+        }
+    else:
+
+        # Dynamically get the label encoding mapping for the target column
+        target_col = st.session_state.target_column
+        target_mapping = st.session_state.mappings.get(target_col, {})
+
+        # Reverse it: {0: "No Cancer", 1: "Cancer"} or {0: "Benign", 1: "Intermediate", 2: "Malignant"}
+        label_map = {v: k for k, v in target_mapping.items()}
+
+        # Safely convert prediction label
+        pred_readable = label_map.get(pred_class, str(pred_class))
+        st.success(f"🔍 Prediction: **{pred_readable}**")
+
+        # Format probabilities
+        readable_probs = {
+            label_map.get(cls, str(cls)): round(p, 4)
+            for cls, p in zip(model.classes_, prob)
+        }
 
     # Highlight the class with the highest probability
     max_class = max(readable_probs, key=readable_probs.get)
