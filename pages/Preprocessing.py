@@ -9,6 +9,8 @@ from src.utils.generate_prompt import imputation_prompt
 
 st.session_state.stepImputation = False
 
+st.title("Preprocessing Page")
+
 # Imputation Step
 if "df_encoded" not in st.session_state:
     st.warning("Please upload a dataset in the Home page or complete sampling.")

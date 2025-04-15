@@ -110,7 +110,7 @@ if st.session_state.stepModels:
             st.session_state.model_scores = model_scores
             st.session_state.test_acc = test_acc
             st.session_state.modeling_done = True
-            st.success(f"✅ Using uploaded model: {uploaded_model.__class__.__name__}")
+            st.success(f"✅ Using uploaded model: {get_final_estimator(st.session_state.selected_model)}")
 
         elif st.session_state.model_choice == "Train a new model":
             with st.spinner("⚙️ Running AutoML to select the best model..."):

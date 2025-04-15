@@ -19,6 +19,8 @@ initialize_session_state({
     "learning_curve_plot": None,
 })
 
+st.title("Sampling Page")
+
 if st.session_state.df_imputed is None:
     st.warning("Please complete pre-processing")
 
