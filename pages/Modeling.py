@@ -43,16 +43,15 @@ init_session()
 # ---------------------------
 # Load dataset
 # ---------------------------
-df = st.session_state.sampled_df
-target = st.session_state.target_column
-
-# ---------------------------
-# UI - Modeling Choice
-# ---------------------------
-st.session_state.model_choice = st.radio(
-    "Choose modeling approach:",
-    ("Train a new model", "Upload a pre-trained model")
-)
+if "sampled_df" not in st.session_state:
+    st.warning("Please upload a dataset in the Home page or complete sampling.")
+else:
+    df = st.session_state.sampled_df
+    target = st.session_state.target_column
+    st.session_state.model_choice = st.radio(
+        "Choose modeling approach:",
+        ("Train a new model", "Upload a pre-trained model")
+    )
 
 uploaded_model = None
 if st.session_state.model_choice == "Upload a pre-trained model":
@@ -65,14 +64,14 @@ if st.session_state.model_choice == "Upload a pre-trained model":
         except Exception as e:
             st.error(f"Failed to load model: {e}")
 
-
-if st.button("Apply Models"):
-    st.session_state.update({
-        "stepModels": True,
-        "modeling_done": False,
-        "shap_done": False,
-        "selected_model": None
-    })
+if "sampled_df" in st.session_state:
+    if st.button("Apply Models"):
+        st.session_state.update({
+            "stepModels": True,
+            "modeling_done": False,
+            "shap_done": False,
+            "selected_model": None
+        })
 
 
 if st.session_state.stepModels:

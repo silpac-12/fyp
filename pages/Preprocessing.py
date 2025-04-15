@@ -7,26 +7,29 @@ from src.feature_analysis import plot_correlation_heatmap, compare_feature_means
 from src.utils.chatgpt_utils import get_chatgpt_feedback
 from src.utils.generate_prompt import imputation_prompt
 
+st.session_state.stepImputation = False
+
 # Imputation Step
-st.subheader("Impute Missing Values")
-imputation_method = st.selectbox("Choose an imputation method", ["mean", "zero", "mice"])
+if "df_encoded" not in st.session_state:
+    st.warning("Please upload a dataset in the Home page or complete sampling.")
+else:
+    st.subheader("Impute Missing Values")
+    imputation_method = st.selectbox("Choose an imputation method", ["mean", "zero", "mice"])
+    if st.button("Apply Imputation"):
+        st.session_state.imputation_method = imputation_method
+        df_imputed = apply_imputation(st.session_state.df_encoded, imputation_method, st.session_state.mappings)
+        st.session_state.df_imputed = df_imputed
+        df_final = decode_categorical(df_imputed, st.session_state.mappings)
+        st.write(df_final.head())
 
+        if st.checkbox("Reattach Dropped Columns"):
+            df_final = pd.concat([st.session_state.dropped_columns_df.reset_index(drop=True),
+            df_final.reset_index(drop=True)], axis=1)
 
-if st.button("Apply Imputation"):
-    st.session_state.imputation_method = imputation_method
-    df_imputed = apply_imputation(st.session_state.df_encoded, imputation_method, st.session_state.mappings)
-    st.session_state.df_imputed = df_imputed
-    df_final = decode_categorical(df_imputed, st.session_state.mappings)
-    st.write(df_final.head())
-
-    if st.checkbox("Reattach Dropped Columns"):
-        df_final = pd.concat([st.session_state.dropped_columns_df.reset_index(drop=True),
-        df_final.reset_index(drop=True)], axis=1)
-
-    st.success("✅ **Final Dataset Ready!**")
-    #df_final = df_final.drop(columns=st.session_state.cols_to_drop)
-    st.session_state.df_final = df_final
-    st.session_state.stepImputation = True
+        st.success("✅ **Final Dataset Ready!**")
+        #df_final = df_final.drop(columns=st.session_state.cols_to_drop)
+        st.session_state.df_final = df_final
+        st.session_state.stepImputation = True
 
 if st.session_state.stepImputation:
 
@@ -70,4 +73,3 @@ if st.session_state.stepImputation:
             response = get_chatgpt_feedback(prompt)
             st.markdown("### 💬 AI Feedback")
             st.write(response)
-

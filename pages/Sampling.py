@@ -19,7 +19,8 @@ initialize_session_state({
     "learning_curve_plot": None,
 })
 
-
+if st.session_state.df_imputed is None:
+    st.warning("Please complete pre-processing")
 
 df_final = st.session_state.get("df_final")
 df_imputed = st.session_state.get("df_imputed")
