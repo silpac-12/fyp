@@ -63,7 +63,7 @@ if st.session_state.model_choice == "Upload a pre-trained model":
         try:
             import pickle, joblib
             uploaded_model = pickle.load(uploaded_file) if uploaded_file.name.endswith(".pkl") else joblib.load(uploaded_file)
-            st.success(f"Model loaded: {uploaded_model.__class__.__name__}")
+            #st.success(f"Model loaded: {get_final_estimator(st.session_state.selected_model)}")
         except Exception as e:
             st.error(f"Failed to load model: {e}")
 
@@ -76,12 +76,13 @@ if "sampled_df" in st.session_state:
             "selected_model": None
         })
 
+X = df.drop(columns=[target])
+y = df[target]
+st.session_state.X = X
+st.session_state.y = y
 
 if st.session_state.stepModels:
-    X = df.drop(columns=[target])
-    y = df[target]
-    st.session_state.X = X
-    st.session_state.y = y
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
     st.session_state.update({"X": X_train, "y": y_train, "X_test": X_test, "y_test": y_test})
 
