@@ -63,7 +63,7 @@ if submitted:
         st.download_button(
             label="📥 Download Model (.pkl)",
             data=buffer,
-            file_name="trained_cancer_model.pkl",
+            file_name="trained_cancer_model1.pkl",
             mime="application/octet-stream"
         )
     else:

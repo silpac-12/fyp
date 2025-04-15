@@ -1,3 +1,4 @@
+import streamlit as st
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.model_selection import StratifiedKFold, train_test_split, learning_curve, cross_val_score
@@ -233,3 +234,7 @@ def finalize_uploaded_model(uploaded_model, X_test, y_test):
     }
 
     return finalized_model, model_scores, test_acc
+
+@st.cache_data
+def get_cached_top_models(X, y):
+    return get_top_models(X, y)

@@ -54,11 +54,11 @@ if st.session_state.df is not None:
     st.write(show_summary(df))
 
     # Encoding Step
-    st.subheader("🔄 Encode Categorical Variables")
+    st.subheader("Encode Categorical Variables")
     df_encoded, mappings = encode_categorical(df)
     st.session_state.df_encoded = df_encoded
     st.session_state.mappings = mappings
-    st.write("✅ **After Encoding:**")
+    st.write("**After Encoding:**")
     st.write(df_encoded.head())
     corr_mat = plot_correlation_heatmap(df_encoded)
     st.write(corr_mat)

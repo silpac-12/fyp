@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import shap
 import streamlit as st
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, get_cachedir
 from sklearn.model_selection import cross_val_score, train_test_split
 from pycaret.classification import interpret_model
 from sklearn.pipeline import Pipeline
@@ -13,7 +13,7 @@ from src.modeling import (
     plot_model_learning_curve,
     get_top_models,
     finalize_chosen_model,
-    get_final_estimator, finalize_uploaded_model
+    get_final_estimator, finalize_uploaded_model, get_cached_top_models
 )
 from src.utils.chatgpt_utils import get_chatgpt_feedback
 from src.utils.generate_prompt import modeling_prompt
@@ -65,9 +65,7 @@ if st.session_state.model_choice == "Upload a pre-trained model":
         except Exception as e:
             st.error(f"Failed to load model: {e}")
 
-# ---------------------------
-# Apply Models button
-# ---------------------------
+
 if st.button("Apply Models"):
     st.session_state.update({
         "stepModels": True,
@@ -76,9 +74,7 @@ if st.button("Apply Models"):
         "selected_model": None
     })
 
-# ---------------------------
-# Modeling Execution
-# ---------------------------
+
 if st.session_state.stepModels:
     X = df.drop(columns=[target])
     y = df[target]
@@ -93,22 +89,22 @@ if st.session_state.stepModels:
 
     if not st.session_state.modeling_done:
         if st.session_state.model_choice == "Upload a pre-trained model" and uploaded_model is not None:
-
-            # ✅ Step 1: Extract model if in a pipeline
+            # Extract model if in a pipeline
             if isinstance(uploaded_model, Pipeline):
                 final_model = uploaded_model.steps[-1][1]
             else:
                 final_model = uploaded_model
 
-            # ✅ Step 2: Set the selected model for Streamlit session
+            # Set the selected model for Streamlit session
             st.session_state.selected_model = uploaded_model  # keep the full pipeline for prediction
 
-            # ✅ Step 3: Evaluate accuracy and metrics
+            # Evaluate accuracy and metrics
             selected_model, model_scores, test_acc = finalize_uploaded_model(
                 uploaded_model,
                 st.session_state.X_test,
                 st.session_state.y_test
             )
+
             st.session_state.model_scores = model_scores
             st.session_state.test_acc = test_acc
             st.session_state.modeling_done = True
@@ -116,7 +112,7 @@ if st.session_state.stepModels:
 
         elif st.session_state.model_choice == "Train a new model":
             with st.spinner("⚙️ Running AutoML to select the best model..."):
-                model_map, comparison_df = get_top_models(X_train, y_train)
+                model_map, comparison_df = get_cached_top_models(X_train, y_train)
                 model_names = list(model_map.keys())
 
             st.subheader("Select Between top 5 models from PyCaret")
@@ -143,8 +139,8 @@ if st.session_state.stepModels:
     # Model info
     if st.session_state.selected_model is not None and st.session_state.modeling_done:
 
-        st.success(f"✅ Finalized model: {get_final_estimator(st.session_state.selected_model)} with accuracy: {st.session_state.test_acc:.3f}")
-        st.success(f"✅ Model selected: {st.session_state.selected_model.__class__.__name__}")
+        st.success(f"Finalized model: {get_final_estimator(st.session_state.selected_model)} with accuracy: {st.session_state.test_acc:.3f}")
+        #st.success(f"✅ Model selected: {st.session_state.selected_model.__class__.__name__}")
 
         st.subheader("🔎 Feature Importance Analysis")
         model_name = st.session_state.selected_model.__class__.__name__.lower()
@@ -166,7 +162,7 @@ if uploaded_model is not None or st.session_state.modeling_done:
         )
         st.pyplot(figModel)
 
-    st.subheader("📊 Model Performance")
+    st.subheader("Model Performance")
     st.write("✅ Model Parameters:")
     st.write(st.session_state.selected_model.get_params())
     st.write("📊 Comparison Scores:", st.session_state.model_scores)
@@ -222,21 +218,21 @@ if uploaded_model is not None or st.session_state.modeling_done:
         st.pyplot(fig)
         plt.clf()
 
-    st.subheader("📌 Classification Evaluation")
-    with st.spinner("📐 Calculating precision, recall, ROC and confusion matrix..."):
+    st.subheader("Classification Evaluation")
+    with st.spinner("Calculating precision, recall, ROC and confusion matrix..."):
         st.session_state.precision, recall, cm_fig, roc_fig = evaluate_model_performance(
             st.session_state.selected_model, st.session_state.X_test, st.session_state.y_test
         )
 
-    st.markdown(f"**🎯 Precision:** `{st.session_state.precision:.3f}`")
-    st.markdown(f"**🎯 Recall:** `{recall:.3f}`")
+    st.write(f"**🎯 Precision:** `{st.session_state.precision:.3f}`")
+    st.write(f"**🎯 Recall:** `{recall:.3f}`")
     st.plotly_chart(cm_fig)
     if roc_fig:
         st.pyplot(roc_fig)
     else:
         st.info("⚠️ ROC curve only available for binary classification.")
 
-    st.subheader("🔁 Feature-Target Correlations")
+    st.subheader("Feature-Target Correlations")
     correlations = df.corr()[target].drop(target).sort_values(key=abs, ascending=False)
     st.dataframe(correlations)
 

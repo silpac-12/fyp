@@ -8,7 +8,7 @@ from src.utils.chatgpt_utils import get_chatgpt_feedback
 from src.utils.generate_prompt import imputation_prompt
 
 # Imputation Step
-st.subheader("🩺 Impute Missing Values")
+st.subheader("Impute Missing Values")
 imputation_method = st.selectbox("Choose an imputation method", ["mean", "zero", "mice"])
 
 
@@ -19,7 +19,7 @@ if st.button("Apply Imputation"):
     df_final = decode_categorical(df_imputed, st.session_state.mappings)
     st.write(df_final.head())
 
-    if st.checkbox("🔗 Reattach Dropped Columns"):
+    if st.checkbox("Reattach Dropped Columns"):
         df_final = pd.concat([st.session_state.dropped_columns_df.reset_index(drop=True),
         df_final.reset_index(drop=True)], axis=1)
 

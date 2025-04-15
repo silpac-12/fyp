@@ -49,7 +49,7 @@ if st.session_state.df_final is not None:
     X = st.session_state.df_imputed.drop(columns=target_column)
     y = pd.Series(st.session_state.df_imputed[target_column], name=target_column)
 
-    if st.button("Check SMOTE Applicability"):
+    if st.button("Target Class Distribution"):
         fig, result = check_smote_applicability(st.session_state.df_final, st.session_state.target_column)
         st.session_state.smote_fig = fig
         st.session_state.smote_result = result
