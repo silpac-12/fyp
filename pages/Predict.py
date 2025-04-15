@@ -2,6 +2,8 @@ import io
 import pickle
 import streamlit as st
 import pandas as pd
+
+from src.imputation import decode_categorical
 from src.modeling import get_final_estimator
 
 st.title("🩺 Cancer Prediction - Live Patient Evaluation")
@@ -17,14 +19,31 @@ if model is None or not columns.any():
 # Step 2: Input Form for Patient Data
 st.header(f"Model Used: {get_final_estimator(st.session_state.selected_model)}")
 st.subheader("🧾 Enter Patient Information")
+
+# Use a reference dataframe to infer dtypes (e.g., the sampled_df before encoding)
+reference_df = st.session_state.sampled_decoded_df.drop(columns=[st.session_state.target_column])
+
 with st.form("patient_form"):
     user_input = {}
     for col in columns:
-        user_input[col] = st.number_input(f"{col}", step=0.01, format="%.2f")
+        if reference_df[col].dtype == "object" or reference_df[col].dtype.name == "category":
+            # Use selectbox for categorical columns
+            unique_vals = reference_df[col].dropna().unique().tolist()
+            user_input[col] = st.selectbox(f"{col}", options=unique_vals)
+        else:
+            # Use number_input for numeric columns
+            user_input[col] = st.number_input(f"{col}", step=0.01, format="%.2f")
     submitted = st.form_submit_button("Predict")
 
+
 if submitted:
+    st.write("🧭 Category Mapping for histopath_type:", st.session_state.mappings.get("histopath_type", {}))
+    st.write("📤 Selected Value:", user_input.get("histopath_type"))
+
     input_df = pd.DataFrame([user_input])
+    input_df = decode_categorical(input_df, st.session_state.mappings)
+
+    #st.write(input_df.read())
 
     # Step 3: Prediction
     # Step 3: Prediction

@@ -149,7 +149,7 @@ if st.session_state.stepApplySample:
             st.json(result1)
 
         # ✅ Provide Download Option
-
+        st.session_state.sampled_decoded_df = sampled_decoded_df
         csv = sampled_decoded_df.to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Download Processed Dataset", csv, f"{selected_method}_data.csv", "text/csv")
 
