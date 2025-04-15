@@ -58,7 +58,7 @@ def apply_imputation(df, method, mappings):
         imputer = SimpleImputer(strategy="mean")
     elif method == "zero":
         imputer = SimpleImputer(strategy="constant", fill_value=0)
-    elif method == "mice":
+    elif method == "❗ MICE (Recommended)":
         imputer = IterativeImputer(max_iter=10, random_state=42)
     else:
         raise ValueError("Unsupported imputation method.")

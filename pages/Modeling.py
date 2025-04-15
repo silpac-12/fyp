@@ -18,6 +18,8 @@ from src.modeling import (
 from src.utils.chatgpt_utils import get_chatgpt_feedback
 from src.utils.generate_prompt import modeling_prompt
 
+st.title("Modelling Page")
+
 # ---------------------------
 # Session state initialization
 # ---------------------------
@@ -39,6 +41,7 @@ def init_session():
         st.session_state.setdefault(k, v)
 
 init_session()
+st.session_state.advice_step = False
 
 # ---------------------------
 # Load dataset
@@ -169,7 +172,26 @@ if uploaded_model is not None or st.session_state.modeling_done:
 
     with st.spinner("🔁 Running cross-validation..."):
         cv_scores = cross_val_score(st.session_state.selected_model, st.session_state.X, st.session_state.y, cv=5, scoring='accuracy')
-        st.info(f"Mean Cross-Validation Accuracy: `{np.mean(cv_scores):.4f}`")
+        st.write("5 Folds")
+        st.success(f"Mean Cross-Validation Accuracy: `{np.mean(cv_scores):.4f}`")
+
+    st.subheader("Classification Evaluation")
+    with st.spinner("Calculating precision, recall, ROC and confusion matrix..."):
+        st.session_state.precision, recall, cm_fig, roc_fig = evaluate_model_performance(
+            st.session_state.selected_model, st.session_state.X_test, st.session_state.y_test
+        )
+
+    st.info(f"**🎯 Precision:** `{st.session_state.precision:.3f}`")
+    st.info(f"**🎯 Recall:** `{recall:.3f}`")
+    st.plotly_chart(cm_fig)
+    if roc_fig:
+        st.pyplot(roc_fig)
+    else:
+        st.info("⚠️ ROC curve only available for binary classification.")
+
+    st.subheader("Feature-Target Correlations")
+    correlations = df.corr()[target].drop(target).sort_values(key=abs, ascending=False)
+    st.dataframe(correlations)
 
     st.subheader("📊 SHAP Summary Plot")
     if not st.session_state.shap_done:
@@ -216,24 +238,6 @@ if uploaded_model is not None or st.session_state.modeling_done:
         shap.plots.beeswarm(expl, show=False)
         st.pyplot(fig)
         plt.clf()
-
-    st.subheader("Classification Evaluation")
-    with st.spinner("Calculating precision, recall, ROC and confusion matrix..."):
-        st.session_state.precision, recall, cm_fig, roc_fig = evaluate_model_performance(
-            st.session_state.selected_model, st.session_state.X_test, st.session_state.y_test
-        )
-
-    st.write(f"**🎯 Precision:** `{st.session_state.precision:.3f}`")
-    st.write(f"**🎯 Recall:** `{recall:.3f}`")
-    st.plotly_chart(cm_fig)
-    if roc_fig:
-        st.pyplot(roc_fig)
-    else:
-        st.info("⚠️ ROC curve only available for binary classification.")
-
-    st.subheader("Feature-Target Correlations")
-    correlations = df.corr()[target].drop(target).sort_values(key=abs, ascending=False)
-    st.dataframe(correlations)
 
     shap_summary = dict(zip(feature_names, np.mean(np.abs(values), axis=0)))
     target_corrs = correlations.to_dict()

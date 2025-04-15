@@ -9,4 +9,5 @@ Use the sidebar to navigate:
 - Preprocess & balance
 - Train models
 - Explain predictions
+- Classify patients
 """)

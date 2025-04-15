@@ -14,7 +14,8 @@ if "df_encoded" not in st.session_state:
     st.warning("Please upload a dataset in the Home page or complete sampling.")
 else:
     st.subheader("Impute Missing Values")
-    imputation_method = st.selectbox("Choose an imputation method", ["mean", "zero", "mice"])
+    st.write("If your dataset doesnt have missing values please select 0 for imputation")
+    imputation_method = st.selectbox("Choose an imputation method", ["mean", "zero", "❗ MICE (Recommended)"])
     if st.button("Apply Imputation"):
         st.session_state.imputation_method = imputation_method
         df_imputed = apply_imputation(st.session_state.df_encoded, imputation_method, st.session_state.mappings)
