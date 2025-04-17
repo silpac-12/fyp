@@ -76,8 +76,8 @@ if "sampled_df" in st.session_state:
             "selected_model": None
         })
 
-    X = df.drop(columns=[target])
-    y = df[target]
+    X = st.session_state.sampled_df.drop(columns=[st.session_state.target_column])
+    y = st.session_state.sampled_df[st.session_state.target_column]
     st.session_state.X = X
     st.session_state.y = y
 
