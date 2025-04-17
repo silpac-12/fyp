@@ -76,10 +76,10 @@ if "sampled_df" in st.session_state:
             "selected_model": None
         })
 
-X = df.drop(columns=[target])
-y = df[target]
-st.session_state.X = X
-st.session_state.y = y
+    X = df.drop(columns=[target])
+    y = df[target]
+    st.session_state.X = X
+    st.session_state.y = y
 
 if st.session_state.stepModels:
 
